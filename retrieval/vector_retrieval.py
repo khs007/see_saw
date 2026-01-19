@@ -2,10 +2,9 @@ from langchain_groq import ChatGroq
 
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
-from sentence_transformers import SentenceTransformer
 from agent.class_agent import AgentState
-from langchain_core.messages import HumanMessage,AIMessage,SystemMessage,BaseMessage,ToolMessage
-
+from langchain_core.messages import HumanMessage,AIMessage
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 import os
 load_dotenv()
@@ -14,20 +13,11 @@ load_dotenv()
 def get_llm():
      return ChatGroq(model="llama-3.1-8b-instant",temperature=0)
 
-class LocalEmbeddings:
-    def __init__(self, model_name):
-        # This uses your ALREADY INSTALLED sentence-transformers
-        self.model = SentenceTransformer(model_name)
-    
-    def embed_documents(self, texts):
-        # This translates LangChain's request into the .encode() method
-        return self.model.encode(texts).tolist()
-    
-    def embed_query(self, text):
-        # This handles a single search query
-        return self.model.encode(text).tolist()
-    
-embeddings = LocalEmbeddings('all-MiniLM-L6-v2')
+embeddings = GoogleGenerativeAIEmbeddings(
+    model="models/gemini-embedding-001",
+    google_api_key=os.getenv("GOOGLE_API_KEY"),
+    task_type="retrieval_document" 
+)
 
 try:
     
