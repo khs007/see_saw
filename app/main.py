@@ -4,7 +4,6 @@ from app.query import query_router
 
 app=FastAPI()
 
-
 app.include_router(query_router)
 @app.get("/health")
 def health_check():
@@ -12,8 +11,6 @@ def health_check():
         "status": "ok",
         "service": "FinGuard"
     }
-
-
 
 from fastapi.middleware.cors import CORSMiddleware
 

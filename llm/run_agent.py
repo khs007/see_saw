@@ -1,5 +1,4 @@
 from retrieval.vector_retrieval import update_summary,add_to_vectordb
-from agent.class_agent import AgentState
 from agent.graph import app
 from langchain_core.messages import HumanMessage,AIMessage
 
