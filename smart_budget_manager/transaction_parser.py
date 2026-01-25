@@ -1,10 +1,10 @@
-from pydantic import BaseModel,Field
-from typing import Optional,Literal
-from langchain_core.prompts import  ChatPromptTemplate,MessagesPlaceholder
+from pydantic import BaseModel, Field
+from typing import Optional, Literal
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 from datetime import datetime
 
-#Extract transaction details
+# Extract transaction details
 class TransactionExtract(BaseModel):
     """Schema for extracting transaction details from chat"""
     amount: float = Field(..., description="Transaction amount in INR")
@@ -18,6 +18,7 @@ class TransactionExtract(BaseModel):
 llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0)
 
 
+# Fixed: Removed curly braces from examples that were being interpreted as template variables
 transaction_prompt = ChatPromptTemplate.from_messages([
     ("system", """
 You are a financial transaction parser. Extract transaction details from user messages.
@@ -27,13 +28,14 @@ RULES:
 - Infer category from context (e.g., "chai" → food, "auto" → transport)
 - Default type is "expense" unless income keywords like "salary", "received", "credited"
 - If date not mentioned, assume today
-- Be smart: "spent 200 on lunch" → {amount: 200, category: "food", description: "lunch"}
+- Be smart with natural language
 
 Examples:
 "Spent 50 rupees on tea" → amount: 50, category: food, description: tea
 "Auto fare 30" → amount: 30, category: transport, description: auto fare
 "Bought shirt for 800" → amount: 800, category: shopping, description: shirt
 "Got salary 25000" → amount: 25000, type: income, description: salary
+"Paid 200 for lunch" → amount: 200, category: food, description: lunch
 """),
     ("human", "{user_message}")
 ])

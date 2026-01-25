@@ -1,6 +1,7 @@
 from langchain_neo4j import Neo4jGraph
 from datetime import datetime
 import uuid
+import os
 
 class FinanceDB:
     def __init__(self, kg_conn: Neo4jGraph = None):
@@ -14,15 +15,18 @@ class FinanceDB:
         if kg_conn is None:
             # Create new connection
             self.kg = Neo4jGraph(
-                url=os.getenv("NEO4J_URI2"),
-                username=os.getenv("NEO4J_USERNAME2"),
-                password=os.getenv("NEO4J_PASSWORD2")
+                url=os.getenv("NEO4J_URI"),
+                username=os.getenv("NEO4J_USERNAME"),
+                password=os.getenv("NEO4J_PASSWORD")
             )
         else:
             self.kg = kg_conn
-            
-        self._create_indexes()
         
+        # Only create indexes once at startup, not on every request
+        if not hasattr(FinanceDB, '_indexes_created'):
+            self._create_indexes()
+            FinanceDB._indexes_created = True
+            
     def _create_indexes(self):
         """Create necessary indexes for performance"""
         indexes = [
@@ -34,7 +38,7 @@ class FinanceDB:
         for index_query in indexes:
             try:
                 self.kg.query(index_query)
-                print(f"[FinanceDB] Index created/verified: {index_query[:50]}...")
+                print(f"[FinanceDB] Index created/verified: {index_query[:70]}...")
             except Exception as e:
                 print(f"[FinanceDB] Index creation warning: {e}")
     
@@ -55,8 +59,7 @@ class FinanceDB:
             created_at: datetime()
         })
         CREATE (u)-[:MADE_TRANSACTION]->(t)
-        
-        // Link to budget if exists
+        WITH t
         OPTIONAL MATCH (b:Budget {user_id: $user_id, category: $category})
         FOREACH (_ IN CASE WHEN b IS NOT NULL THEN [1] ELSE [] END |
             CREATE (t)-[:BELONGS_TO]->(b)
@@ -103,3 +106,14 @@ class FinanceDB:
         except Exception as e:
             print(f"[FinanceDB] Error setting budget: {e}")
             return False
+
+
+# Singleton pattern for connection reuse
+_finance_db_instance = None
+
+def get_finance_db(kg_conn=None):
+    """Get or create FinanceDB singleton instance"""
+    global _finance_db_instance
+    if _finance_db_instance is None:
+        _finance_db_instance = FinanceDB(kg_conn)
+    return _finance_db_instance
