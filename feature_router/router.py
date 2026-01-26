@@ -1,6 +1,6 @@
 from llm.run_agent import run_agent
 from agent.finance_agent import finance_transaction_handler, handle_budget_setup
-from retrieval.kg_retrieval import kg_conn
+from retrieval.kg_retrieval import kg_conn  # ⚠️ This is SCHEMES database
 from typing import Dict, Any
 
 # Keywords for different features
@@ -8,7 +8,7 @@ FINANCE_KEYWORDS = [
     "spent", "paid", "bought", "expense", "budget",
     "rupees", "₹", "rs", "transaction", "balance",
     "income", "salary", "received", "set budget",
-    "spend", "paying", "buy"  # Added variations
+    "spend", "paying", "buy"
 ]
 
 SCAM_KEYWORDS = ["scam", "fraud", "otp", "phishing", "check", "link"]
@@ -60,6 +60,8 @@ def handle_finance_request(query: str, user_id: str) -> Dict[str, Any]:
     """
     Handle finance-related requests (transactions, budgets).
     
+    ✅ FIXED: Does NOT pass kg_conn to finance functions
+    
     Args:
         query: User's query
         user_id: User identifier
@@ -92,11 +94,13 @@ def handle_finance_request(query: str, user_id: str) -> Dict[str, Any]:
     # Check if it's a budget setup request
     if any(kw in query for kw in ["set budget", "budget for", "limit for"]):
         print(f"[FinanceHandler] → Budget setup")
-        updated_state = handle_budget_setup(state, kg_conn, user_id)
+        # ✅ CRITICAL FIX: Pass None instead of kg_conn
+        updated_state = handle_budget_setup(state, None, user_id)
     else:
-        # Handle transaction logging
-        print(f"[FinanceHandler] → Transaction logging")
-        updated_state = finance_transaction_handler(state, kg_conn, user_id)
+        # Handle transaction logging or spending queries
+        print(f"[FinanceHandler] → Transaction/Spending handler")
+        # ✅ CRITICAL FIX: Pass None instead of kg_conn
+        updated_state = finance_transaction_handler(state, None, user_id)
     
     # Extract response
     last_message = updated_state["messages"][-1]

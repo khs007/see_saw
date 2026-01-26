@@ -21,18 +21,18 @@ def finance_transaction_handler(state: AgentState, kg_conn, user_id: str) -> Age
     messages = state.get("messages", [])
     last_message = messages[-1].content if messages else ""
     
-    # Initialize services
+   
     from db_.neo4j_finance import get_finance_db
-    finance_db = get_finance_db(kg_conn)
-    analyzer = SpendingAnalyzer(kg_conn)
+    finance_db = get_finance_db()  
+    
+   
+    analyzer = SpendingAnalyzer(finance_db.kg)  
     alert_gen = AlertGenerator()
     
     # Detect query type
     query_lower = last_message.lower()
     
-    # ========================================
-    # SPENDING REPORT QUERIES
-    # ========================================
+   
     if any(kw in query_lower for kw in [
         "total spent", "how much spent", "spending", "expenses",
         "remaining", "left", "balance", "budget status",
@@ -40,14 +40,14 @@ def finance_transaction_handler(state: AgentState, kg_conn, user_id: str) -> Age
     ]):
         print(f"[FinanceHandler] → Spending report/analysis")
         
-        # Check if asking about specific category
+      
         category = None
         for cat in ["food", "transport", "shopping", "entertainment", "bills", "health", "education"]:
             if cat in query_lower:
                 category = cat
                 break
         
-        # Get spending data
+       
         try:
             spending_data = analyzer.get_monthly_spending(user_id, category)
             budget_status = analyzer.check_budget_status(user_id)
@@ -170,9 +170,9 @@ Examples:
     try:
         budget_intent = chain.invoke({"message": last_message})
         
-        # Set budget in database WITH ERROR HANDLING
+        # ✅ FIXED: Set budget in database WITH ERROR HANDLING
         from db_.neo4j_finance import get_finance_db
-        finance_db = get_finance_db(kg_conn)
+        finance_db = get_finance_db()  # ✅ Gets finance DB connection
         
         try:
             success = finance_db.set_budget(

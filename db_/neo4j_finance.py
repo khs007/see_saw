@@ -10,17 +10,21 @@ class FinanceDB:
         
         Args:
             kg_conn: Existing Neo4jGraph connection instance.
-                    If None, creates new connection from env vars.
+                    ⚠️ Should ALWAYS be None to use finance credentials!
         """
         if kg_conn is None:
-            # Create new connection
+            # ✅ Create new connection using FINANCE database credentials
             self.kg = Neo4jGraph(
                 url=os.getenv("NEO4J_URI2"),
                 username=os.getenv("NEO4J_USERNAME2"),
                 password=os.getenv("NEO4J_PASSWORD2")
             )
+            print("[FinanceDB] ✅ Created NEW connection to finance database")
+            print(f"[FinanceDB]    Connected to: {os.getenv('NEO4J_URI2')}")
         else:
+            # ⚠️ This should NEVER happen in production!
             self.kg = kg_conn
+            print("[FinanceDB] 🚨 WARNING: Using provided connection - may be wrong database!")
         
         # Only create indexes once at startup, not on every request
         if not hasattr(FinanceDB, '_indexes_created'):
@@ -38,13 +42,14 @@ class FinanceDB:
         for index_query in indexes:
             try:
                 self.kg.query(index_query)
-                print(f"[FinanceDB] Index created/verified: {index_query[:70]}...")
+                print(f"[FinanceDB] ✅ Index: {index_query[:50]}...")
             except Exception as e:
-                print(f"[FinanceDB] Index creation warning: {e}")
+                if "already exists" not in str(e).lower() and "equivalent" not in str(e).lower():
+                    print(f"[FinanceDB] ⚠️ Index warning: {e}")
     
     
     def add_transaction(self, user_id: str, transaction: dict) -> bool:
-        """Store transaction in Neo4j"""
+        """Store transaction in Neo4j FINANCE database"""
         query = """
         MERGE (u:User {id: $user_id})
         CREATE (t:Transaction {
@@ -67,6 +72,11 @@ class FinanceDB:
         RETURN t.id as transaction_id
         """
         
+        # ✅ CRITICAL FIX: Ensure date is never None
+        transaction_date = transaction.get("date")
+        if not transaction_date:
+            transaction_date = datetime.now().isoformat()
+        
         try:
             result = self.kg.query(query, {
                 "tx_id": str(uuid.uuid4()),
@@ -76,15 +86,18 @@ class FinanceDB:
                 "description": transaction["description"],
                 "type": transaction.get("type", "expense"),
                 "payment_mode": transaction.get("payment_mode", "unknown"),
-                "date": transaction.get("date", datetime.now().isoformat())
+                "date": transaction_date  # ✅ Always has a valid date
             })
+            print(f"[FinanceDB] ✅ Transaction: ₹{transaction['amount']} - {transaction['description']} on {transaction_date}")
             return True
         except Exception as e:
-            print(f"[FinanceDB] Error adding transaction: {e}")
+            print(f"[FinanceDB] ❌ Transaction failed: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def set_budget(self, user_id: str, category: str, monthly_limit: float) -> bool:
-        """Set or update budget for a category"""
+        """Set or update budget for a category in FINANCE database"""
         query = """
         MERGE (u:User {id: $user_id})
         MERGE (b:Budget {user_id: $user_id, category: $category})
@@ -102,18 +115,67 @@ class FinanceDB:
                 "category": category.lower(),
                 "monthly_limit": monthly_limit
             })
+            print(f"[FinanceDB] ✅ Budget: {category} = ₹{monthly_limit:,.2f}")
             return True
         except Exception as e:
-            print(f"[FinanceDB] Error setting budget: {e}")
+            print(f"[FinanceDB] ❌ Budget failed: {e}")
+            return False
+    
+    def verify_connection(self) -> bool:
+        """Verify connection to finance database"""
+        try:
+            result = self.kg.query("RETURN 1 as test")
+            print("[FinanceDB] ✅ Connection verified")
+            return True
+        except Exception as e:
+            print(f"[FinanceDB] ❌ Connection failed: {e}")
             return False
 
 
-# Singleton pattern for connection reuse
+# ============================================================
+# SINGLETON PATTERN - SAFE VERSION
+# ============================================================
+
 _finance_db_instance = None
 
 def get_finance_db(kg_conn=None):
-    """Get or create FinanceDB singleton instance"""
+    """
+    Get or create FinanceDB singleton instance.
+    
+    ⚠️ CRITICAL: ALWAYS call without parameters!
+    
+    Usage:
+        ✅ CORRECT: finance_db = get_finance_db()
+        ❌ WRONG:   finance_db = get_finance_db(some_connection)
+    
+    Returns:
+        FinanceDB: Singleton instance connected to NEO4J_URI2 (finance database)
+    """
     global _finance_db_instance
+    
+    # ✅ SAFETY CHECK: Warn if someone tries to pass a connection
+    if kg_conn is not None:
+        print("[get_finance_db] 🚨 WARNING: kg_conn parameter ignored!")
+        print("[get_finance_db]    This may indicate a bug. Check your code.")
+        print("[get_finance_db]    Finance DB should ALWAYS use its own connection.")
+    
+    # Create singleton instance if it doesn't exist
     if _finance_db_instance is None:
-        _finance_db_instance = FinanceDB(kg_conn)
+        # ✅ ALWAYS pass None to force finance credentials
+        _finance_db_instance = FinanceDB(None)
+        print("[get_finance_db] ✅ Singleton created")
+    
     return _finance_db_instance
+
+
+def reset_finance_db():
+    """
+    Reset singleton instance (for testing or reconnecting).
+    
+    ⚠️ WARNING: This closes the current connection!
+    Use only for testing or if you need to reconnect.
+    """
+    global _finance_db_instance
+    _finance_db_instance = None
+    FinanceDB._indexes_created = False  # Reset index flag too
+    print("[reset_finance_db] 🔄 Singleton reset")
