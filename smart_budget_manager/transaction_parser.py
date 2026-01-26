@@ -35,34 +35,51 @@ RULES:
   * OTHER: anything else
 
 - Default type is "expense" unless income keywords like "salary", "received", "credited"
-- If date not mentioned, assume today
+- **IMPORTANT**: For date field:
+  * If user mentions specific date (e.g., "yesterday", "on 15th", "last Monday") → extract it
+  * If NO date mentioned → return null (NOT today's date)
+  * Let the backend handle default date assignment
 - Be smart with natural language
 
 Examples:
-"Spent 50 rupees on tea" → amount: 50, category: food, description: tea
-"Auto fare 30" → amount: 30, category: transport, description: auto fare
-"Bought shirt for 800" → amount: 800, category: shopping, description: shirt
-"Got salary 25000" → amount: 25000, type: income, description: salary
-"Paid 200 for lunch" → amount: 200, category: food, description: lunch
-"Coffee 10" → amount: 10, category: food, description: coffee
-"Clothes 30" → amount: 30, category: shopping, description: clothes
+"Spent 50 rupees on tea" → amount: 50, category: food, description: tea, date: null
+"Auto fare 30" → amount: 30, category: transport, description: auto fare, date: null
+"Bought shirt for 800 yesterday" → amount: 800, category: shopping, description: shirt, date: <yesterday's date>
+"Got salary 25000" → amount: 25000, type: income, description: salary, date: null
+"Paid 200 for lunch on 20th" → amount: 200, category: food, description: lunch, date: "2025-01-20"
 """),
     ("human", "{user_message}")
 ])
 
 def parse_transaction(user_message: str) -> Optional[TransactionExtract]:
-    """Parse transaction from natural language"""
+    """
+    Parse transaction from natural language.
+    
+    Args:
+        user_message: User's natural language transaction description
+        
+    Returns:
+        TransactionExtract object or None if parsing fails
+    """
     chain = transaction_prompt | llm.with_structured_output(TransactionExtract)
     
     try:
         transaction = chain.invoke({"user_message": user_message})
         
-        # ✅ Log what was parsed
-        print(f"[TransactionParser] Amount: ₹{transaction.amount}")
-        print(f"[TransactionParser] Category: {transaction.category}")
-        print(f"[TransactionParser] Description: {transaction.description}")
+        # ✅ CRITICAL FIX: Set current date if LLM didn't provide one
+        if not transaction.date:
+            transaction.date = datetime.now().strftime("%Y-%m-%d")
+            print(f"[TransactionParser] ⚠️ No date in query, using today: {transaction.date}")
+        
+        # Log parsed details
+        print(f"[TransactionParser] ✅ Parsed transaction:")
+        print(f"  Amount: ₹{transaction.amount}")
+        print(f"  Category: {transaction.category}")
+        print(f"  Description: {transaction.description}")
+        print(f"  Date: {transaction.date}")
         
         return transaction
+        
     except Exception as e:
         print(f"[TransactionParser] ❌ Error: {e}")
         return None

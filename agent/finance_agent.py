@@ -16,38 +16,40 @@ class BudgetIntent(BaseModel):
 
 
 def finance_transaction_handler(state: AgentState, kg_conn, user_id: str) -> AgentState:
-    """Handle finance-related queries and transactions with IMPROVED ERROR HANDLING"""
+    """Handle finance-related queries and transactions with IMPROVED QUERY DETECTION"""
     
     messages = state.get("messages", [])
     last_message = messages[-1].content if messages else ""
     
-   
     from db_.neo4j_finance import get_finance_db
     finance_db = get_finance_db()  
     
-   
     analyzer = SpendingAnalyzer(finance_db.kg)  
     alert_gen = AlertGenerator()
     
     # Detect query type
     query_lower = last_message.lower()
     
-   
+    # ========================================
+    # SPENDING REPORT / ANALYSIS QUERIES
+    # ========================================
+    # Check for spending queries FIRST (before transaction parsing)
     if any(kw in query_lower for kw in [
         "total spent", "how much spent", "spending", "expenses",
         "remaining", "left", "balance", "budget status",
-        "monthly report", "spending report"
+        "monthly report", "spending report", "show spending",
+        "how much did i spend", "what did i spend", "spent for"
     ]):
         print(f"[FinanceHandler] → Spending report/analysis")
         
-      
+        # Extract category if mentioned
         category = None
         for cat in ["food", "transport", "shopping", "entertainment", "bills", "health", "education"]:
             if cat in query_lower:
                 category = cat
                 break
         
-       
+        # Get spending data
         try:
             spending_data = analyzer.get_monthly_spending(user_id, category)
             budget_status = analyzer.check_budget_status(user_id)
@@ -96,45 +98,56 @@ def finance_transaction_handler(state: AgentState, kg_conn, user_id: str) -> Age
     # ========================================
     # TRANSACTION LOGGING
     # ========================================
-    transaction = parse_transaction(last_message)
-    
-    if transaction:
-        # Store transaction WITH ERROR HANDLING
-        try:
-            success = finance_db.add_transaction(user_id, transaction.model_dump())
-        except Exception as e:
-            print(f"[FinanceHandler] ❌ Transaction storage failed: {e}")
-            success = False
+    # Only parse as transaction if it looks like one
+    # Must have amount-related keywords
+    if any(kw in query_lower for kw in [
+        "spent", "paid", "bought", "purchased", "cost", "rupees", "₹", "rs"
+    ]):
+        transaction = parse_transaction(last_message)
         
-        if success:
-            print(f"[FinanceHandler] ✅ Transaction logged: ₹{transaction.amount}")
-            
-            # Check budget after transaction
+        if transaction and transaction.amount > 0:  # ✅ Check for valid amount
+            # Store transaction WITH ERROR HANDLING
             try:
-                budget_status = analyzer.check_budget_status(user_id)
-                alert = alert_gen.generate_alert(budget_status)
+                success = finance_db.add_transaction(user_id, transaction.model_dump())
             except Exception as e:
-                print(f"[FinanceHandler] ⚠️ Budget check failed: {e}")
-                alert = None
+                print(f"[FinanceHandler] ❌ Transaction storage failed: {e}")
+                success = False
             
-            response = f"✅ Transaction logged: ₹{transaction.amount} for {transaction.description}"
-            
-            if transaction.category:
-                response += f" ({transaction.category})"
-            
-            if alert:
-                response += f"\n\n{alert}"
-            
-            state["messages"].append(AIMessage(content=response))
-            state["transaction_data"] = transaction.model_dump()
-            state["alert_message"] = alert
+            if success:
+                print(f"[FinanceHandler] ✅ Transaction logged: ₹{transaction.amount}")
+                
+                # Check budget after transaction
+                try:
+                    budget_status = analyzer.check_budget_status(user_id)
+                    alert = alert_gen.generate_alert(budget_status)
+                except Exception as e:
+                    print(f"[FinanceHandler] ⚠️ Budget check failed: {e}")
+                    alert = None
+                
+                response = f"✅ Transaction logged: ₹{transaction.amount} for {transaction.description}"
+                
+                if transaction.category:
+                    response += f" ({transaction.category})"
+                
+                if alert:
+                    response += f"\n\n{alert}"
+                
+                state["messages"].append(AIMessage(content=response))
+                state["transaction_data"] = transaction.model_dump()
+                state["alert_message"] = alert
+            else:
+                state["messages"].append(
+                    AIMessage(content="❌ Failed to log transaction due to a database error. Please try again.")
+                )
         else:
+            # Couldn't parse a valid transaction
             state["messages"].append(
-                AIMessage(content="❌ Failed to log transaction due to a database error. Please try again.")
+                AIMessage(content="I couldn't understand that as a transaction. Please try: 'Spent 50 on tea' or 'Paid 200 for auto'")
             )
     else:
+        # Not a transaction or spending query
         state["messages"].append(
-            AIMessage(content="I couldn't parse that as a transaction. Please try: 'Spent 50 on tea' or 'Paid 200 for auto'")
+            AIMessage(content="I can help you track transactions or check your spending. Try:\n• 'Spent 50 on tea'\n• 'How much did I spend this month?'\n• 'Show my budget status'")
         )
     
     return state
@@ -170,9 +183,8 @@ Examples:
     try:
         budget_intent = chain.invoke({"message": last_message})
         
-        # ✅ FIXED: Set budget in database WITH ERROR HANDLING
         from db_.neo4j_finance import get_finance_db
-        finance_db = get_finance_db()  # ✅ Gets finance DB connection
+        finance_db = get_finance_db()
         
         try:
             success = finance_db.set_budget(

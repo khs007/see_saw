@@ -49,7 +49,16 @@ class FinanceDB:
     
     
     def add_transaction(self, user_id: str, transaction: dict) -> bool:
-        """Store transaction in Neo4j FINANCE database"""
+        """
+        Store transaction in Neo4j FINANCE database
+        
+        Args:
+            user_id: User identifier
+            transaction: Transaction dictionary with amount, category, description, etc.
+            
+        Returns:
+            True if successful, False otherwise
+        """
         query = """
         MERGE (u:User {id: $user_id})
         CREATE (t:Transaction {
@@ -72,10 +81,25 @@ class FinanceDB:
         RETURN t.id as transaction_id
         """
         
-        # ✅ CRITICAL FIX: Ensure date is never None
+        # ✅ CRITICAL FIX: Ensure date is ALWAYS current if not provided
         transaction_date = transaction.get("date")
-        if not transaction_date:
+        
+        if not transaction_date or transaction_date == "":
+            # No date provided → use current datetime
             transaction_date = datetime.now().isoformat()
+            print(f"[FinanceDB] ⚠️ No date in transaction, using now: {transaction_date}")
+        elif isinstance(transaction_date, str):
+            # String date provided (e.g., "2025-01-26")
+            # Convert to ISO datetime format
+            try:
+                # Parse the date string and convert to datetime
+                if "T" not in transaction_date:  # Just a date, no time
+                    dt = datetime.strptime(transaction_date, "%Y-%m-%d")
+                    transaction_date = dt.isoformat()
+                    print(f"[FinanceDB] ✅ Converted date to ISO: {transaction_date}")
+            except ValueError as e:
+                print(f"[FinanceDB] ⚠️ Invalid date format '{transaction_date}', using now")
+                transaction_date = datetime.now().isoformat()
         
         try:
             result = self.kg.query(query, {
@@ -86,10 +110,16 @@ class FinanceDB:
                 "description": transaction["description"],
                 "type": transaction.get("type", "expense"),
                 "payment_mode": transaction.get("payment_mode", "unknown"),
-                "date": transaction_date  # ✅ Always has a valid date
+                "date": transaction_date
             })
-            print(f"[FinanceDB] ✅ Transaction: ₹{transaction['amount']} - {transaction['description']} on {transaction_date}")
+            
+            print(f"[FinanceDB] ✅ Transaction saved:")
+            print(f"  Amount: ₹{transaction['amount']}")
+            print(f"  Description: {transaction['description']}")
+            print(f"  Date: {transaction_date}")
+            
             return True
+            
         except Exception as e:
             print(f"[FinanceDB] ❌ Transaction failed: {e}")
             import traceback
