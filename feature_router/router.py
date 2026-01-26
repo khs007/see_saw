@@ -1,9 +1,3 @@
-# feature_router/router.py - UPDATED WITH CONCEPT EXPLAINER
-"""
-Enhanced Feature Router with Concept Explanation
-Routes queries including financial concept explanations
-"""
-
 from llm.run_agent import run_agent
 from agent.finance_agent import finance_transaction_handler, handle_budget_setup
 from typing import Dict, Any, Literal
@@ -11,24 +5,16 @@ from pydantic import BaseModel, Field
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 
-
-# ========================================
-# GREETING DETECTION & HANDLER
-# ========================================
-
 def _is_greeting(query: str) -> bool:
     """
     Detect if query is a greeting/casual conversation starter
-    
     Args:
         query: User's query
-        
     Returns:
         True if it's a greeting
     """
     query_lower = query.lower().strip()
-    
-    # Direct greetings
+ 
     greetings = [
         'hi', 'hello', 'hey', 'namaste', 'namaskar',
         'good morning', 'good afternoon', 'good evening',
@@ -38,21 +24,16 @@ def _is_greeting(query: str) -> bool:
         'start', 'begin', 'help'
     ]
     
-    # Check if query is exactly a greeting
     if query_lower in greetings:
         return True
     
-    # Check if starts with greeting
     if any(query_lower.startswith(g) for g in greetings):
         return True
-    
-    # Very short queries that aren't commands
+
     if len(query_lower) <= 10 and '?' not in query_lower:
-        # Likely a greeting or unclear input
         return True
     
     return False
-
 
 def handle_greeting(query: str, user_id: str) -> Dict[str, Any]:
     """
@@ -67,13 +48,12 @@ def handle_greeting(query: str, user_id: str) -> Dict[str, Any]:
     """
     from financial_explainer.language_handler import get_language_handler
     
-    # Detect language
+
     language_handler = get_language_handler()
     lang_detection = language_handler.detect_language(query)
     
     print(f"[GreetingHandler] Language: {lang_detection.should_respond_in}")
-    
-    # Get user's recent activity (optional - to personalize)
+ 
     try:
         from smart_budget_manager.spending_analyser import SpendingAnalyzer
         from db_.neo4j_finance import get_finance_db
@@ -98,7 +78,6 @@ def handle_greeting(query: str, user_id: str) -> Dict[str, Any]:
         "answer": greeting,
         "type": "greeting"
     }
-
 
 def _get_english_greeting(has_transactions: bool) -> str:
     """Get English greeting"""
@@ -188,10 +167,6 @@ def _get_hindi_greeting(has_transactions: bool) -> str:
     return _get_hinglish_greeting(has_transactions)
 
 
-# ========================================
-# QUERY CLASSIFICATION SCHEMA (UPDATED)
-# ========================================
-
 class QueryClassification(BaseModel):
     """Classification of user query intent"""
     category: Literal[
@@ -201,7 +176,7 @@ class QueryClassification(BaseModel):
         "budget_setup",
         "scam_detection",
         "scam_analysis",
-        "concept_explanation",  # NEW: Financial concept explanation
+        "concept_explanation", 
         "general_conversation"
     ] = Field(
         ..., 
@@ -211,10 +186,6 @@ class QueryClassification(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0)
     reasoning: str = Field(...)
 
-
-# ========================================
-# LLM-BASED QUERY CLASSIFIER (UPDATED)
-# ========================================
 
 classification_llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0)
 
@@ -251,9 +222,10 @@ Clear indicators:
 - Recording expenses: "₹100 for lunch", "coffee cost 20"
 
 **spending_query**: User is ASKING about their past spending/expenses.
-Clear indicators:
+CRITICAL INDICATORS (high priority):
 - Questions about spending: "how much did I spend?", "what did I spend on?"
-- Requests for reports: "show my spending", "monthly expenses"
+- Time-specific queries: "today", "yesterday", "this week", "last 7 days", "this month"
+- Requests for reports: "show my spending", "monthly expenses", "daily report"
 - Balance checks: "how much left?", "budget status"
 
 **budget_setup**: Setting or modifying budget limits.
@@ -328,10 +300,6 @@ def classify_query(query: str) -> QueryClassification:
         )
 
 
-# ========================================
-# MAIN ROUTER (UPDATED)
-# ========================================
-
 def router_feature(req: Dict[str, Any]) -> Dict[str, Any]:
     """
     Intelligent feature router using LLM-based query classification.
@@ -390,10 +358,6 @@ def router_feature(req: Dict[str, Any]) -> Dict[str, Any]:
         print(f"[FeatureRouter] → GENERAL CONVERSATION")
         return handle_greeting(query, user_id)
 
-
-# ========================================
-# SPECIALIZED HANDLERS
-# ========================================
 
 def handle_transaction_request(query: str, user_id: str) -> Dict[str, Any]:
     """Handle transaction logging requests"""
