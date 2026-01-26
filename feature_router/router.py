@@ -1,3 +1,9 @@
+# feature_router/router.py - UPDATED WITH SCAM DETECTION
+"""
+Enhanced Feature Router with Scam Detection
+Routes queries to appropriate handlers including scam detection
+"""
+
 from llm.run_agent import run_agent
 from agent.finance_agent import finance_transaction_handler, handle_budget_setup
 from typing import Dict, Any, Literal
@@ -18,15 +24,11 @@ class QueryClassification(BaseModel):
         "spending_query",
         "budget_setup",
         "scam_detection",
+        "scam_analysis",  # NEW: For analyzing suspicious messages
         "general_conversation"
     ] = Field(
         ..., 
         description="Primary category of the user's query"
-    )
-    
-    sub_category: str = Field(
-        default="",
-        description="Optional sub-category for more specific routing"
     )
     
     confidence: float = Field(
@@ -73,22 +75,39 @@ Clear indicators:
 - Questions about spending: "how much did I spend?", "what did I spend on?"
 - Requests for reports: "show my spending", "monthly expenses"
 - Balance checks: "how much left?", "budget status"
-- Pattern: "spent" WITHOUT a specific amount = query, not logging
 
 **budget_setup**: Setting or modifying budget limits.
 Indicators: "set budget", "my budget is", "limit for", "change budget"
 
-**scam_detection**: Asking about fraud, scams, phishing, suspicious links, OTP requests.
+**scam_detection**: General questions about fraud, scams, phishing safety.
+Indicators: "what is phishing", "how to spot scams", "is this safe", "scam awareness"
 
-**general_conversation**: Greetings, thanks, unclear queries, chit-chat.
+**scam_analysis**: User wants to CHECK if a specific message/link/offer is a scam.
+CRITICAL INDICATORS (high priority):
+- "Is this a scam": user forwarding suspicious message
+- "Check this message": providing actual suspicious content
+- "I received": followed by suspicious message/SMS/call description
+- "Someone asked for": OTP, PIN, bank details, money transfer
+- "Should I": trust/click/pay/share followed by suspicious request
+- Includes actual suspicious content: links, phone numbers, offers
+- "Verify this": followed by message content
+- Contains forwarded message text or screenshots
+
+Examples:
+✅ scam_analysis: "I got this SMS: 'Your account will be blocked. Click here to verify KYC' - is it real?"
+✅ scam_analysis: "Someone called asking for my OTP. Should I give it?"
+✅ scam_analysis: "Check if this is scam: You won 10 lakh lottery, send 5000 processing fee"
+❌ scam_detection: "How can I protect myself from scams?"
+❌ scam_detection: "What is phishing?"
 
 CRITICAL RULES:
 1. "spent for this month" = spending_query (asking about history)
 2. "spent 50 on tea" = transaction_logging (recording new transaction)
-3. "woman 22 years old scheme" = government_schemes (NOT finance)
-4. "years" in query does NOT mean "rupees"
-5. If query mentions schemes/yojanas/eligibility → ALWAYS government_schemes
-6. Confidence should be HIGH (>0.8) when intent is clear
+3. If query contains ACTUAL suspicious content to analyze → scam_analysis
+4. If query asks ABOUT scams in general → scam_detection
+5. "years" in query does NOT mean "rupees"
+6. If query mentions schemes/yojanas/eligibility → ALWAYS government_schemes
+7. Confidence should be HIGH (>0.8) when intent is clear
 
 Return classification with reasoning.
 """),
@@ -169,12 +188,13 @@ def router_feature(req: Dict[str, Any]) -> Dict[str, Any]:
         print(f"[FeatureRouter] → BUDGET SETUP")
         return handle_budget_request(query, user_id)
     
+    elif classification.category == "scam_analysis":
+        print(f"[FeatureRouter] → SCAM ANALYSIS")
+        return handle_scam_analysis(query, user_id)
+    
     elif classification.category == "scam_detection":
-        print(f"[FeatureRouter] → SCAM DETECTION")
-        return {
-            "answer": "⚠️ **Scam Alert**\n\nPlease be cautious! Common scam tactics include:\n• Requests for OTP/PIN/passwords\n• Suspicious links or fake websites\n• Too-good-to-be-true offers\n• Urgent requests for money/info\n\nNever share sensitive information. Verify before you trust!",
-            "type": "scam_warning"
-        }
+        print(f"[FeatureRouter] → SCAM EDUCATION")
+        return handle_scam_education(query)
     
     else:  # general_conversation or low confidence
         if classification.confidence < 0.6:
@@ -184,7 +204,7 @@ def router_feature(req: Dict[str, Any]) -> Dict[str, Any]:
         else:
             print(f"[FeatureRouter] → GENERAL CONVERSATION")
             return {
-                "answer": "Hello! I'm FinGuard, your assistant for:\n\n• 🏛️ Government schemes (eligibility, benefits, applications)\n• 💰 Finance tracking (log expenses, check spending, set budgets)\n• 🛡️ Scam awareness\n\nHow can I help you today?",
+                "answer": "Hello! I'm FinGuard, your assistant for:\n\n• 🏛️ Government schemes (eligibility, benefits, applications)\n• 💰 Finance tracking (log expenses, check spending, set budgets)\n• 🛡️ Scam detection (analyze suspicious messages, learn about fraud)\n\nHow can I help you today?",
                 "type": "greeting"
             }
 
@@ -289,4 +309,124 @@ def handle_budget_request(query: str, user_id: str) -> Dict[str, Any]:
     return {
         "answer": last_message.content,
         "type": "budget_setup"
+    }
+
+
+def handle_scam_analysis(query: str, user_id: str) -> Dict[str, Any]:
+    """
+    Handle scam analysis requests - analyze specific suspicious content
+    """
+    from scam_detector.scam_detector import get_scam_detector
+    
+    print(f"[ScamAnalysisHandler] Analyzing suspicious content for user {user_id}")
+    
+    try:
+        detector = get_scam_detector()
+        result = detector.detect_scam(query)
+        
+        # Format response based on risk level
+        if result.risk_level == "CRITICAL":
+            emoji = "🚨"
+            verdict = "**HIGHLY LIKELY A SCAM**"
+        elif result.risk_level == "HIGH":
+            emoji = "⛔"
+            verdict = "**LIKELY A SCAM**"
+        elif result.risk_level == "MEDIUM":
+            emoji = "⚠️"
+            verdict = "**SUSPICIOUS - EXERCISE CAUTION**"
+        else:
+            emoji = "✅"
+            verdict = "**APPEARS SAFE** (but stay vigilant)"
+        
+        # Build response
+        response = f"{emoji} **Scam Analysis Report**\n\n"
+        response += f"**Verdict:** {verdict}\n"
+        response += f"**Risk Level:** {result.risk_level}\n"
+        response += f"**Confidence:** {result.confidence:.0%}\n\n"
+        
+        if result.scam_type:
+            response += f"**Scam Type:** {result.scam_type}\n\n"
+        
+        if result.red_flags:
+            response += "**⚠️ Red Flags Detected:**\n"
+            for flag in result.red_flags[:5]:  # Limit to top 5
+                response += f"  • {flag}\n"
+            response += "\n"
+        
+        response += f"**💡 Recommendation:**\n{result.recommendation}\n\n"
+        
+        # Add general safety tips
+        response += "**🛡️ General Safety Tips:**\n"
+        response += "• Never share OTP, PIN, CVV, or passwords\n"
+        response += "• Banks never ask for sensitive info via SMS/call\n"
+        response += "• Verify with official sources before acting\n"
+        response += "• Be cautious of urgent/threatening messages\n"
+        
+        return {
+            "answer": response,
+            "type": "scam_analysis",
+            "scam_result": result.model_dump()
+        }
+        
+    except Exception as e:
+        print(f"[ScamAnalysisHandler] ❌ Error: {e}")
+        return {
+            "answer": "⚠️ I encountered an error while analyzing this message. Please verify any suspicious content with official sources before taking action.",
+            "type": "scam_analysis_error"
+        }
+
+
+def handle_scam_education(query: str) -> Dict[str, Any]:
+    """
+    Handle general scam education/awareness queries
+    """
+    response = """🛡️ **Scam Awareness & Protection**
+
+**Common Scam Types in India:**
+
+1. **📱 OTP/Banking Scams**
+   • Never share OTP, PIN, CVV with anyone
+   • Banks NEVER ask for these via call/SMS
+   
+2. **🎁 Fake Prize/Lottery Scams**
+   • "You won a lottery" - you didn't enter
+   • Asking for "processing fee" to claim prize
+   
+3. **🏦 Phishing (Fake Banks/Govt)**
+   • Emails/SMS from fake bank websites
+   • "KYC update required" with suspicious links
+   
+4. **📦 Fake Delivery Scams**
+   • "Courier stuck, pay customs fee"
+   • Fake tracking links
+   
+5. **💰 Investment Frauds**
+   • "Guaranteed returns" schemes
+   • Ponzi/pyramid schemes
+   
+6. **❤️ Romance Scams**
+   • Online relationships leading to money requests
+
+**🚨 Red Flags to Watch For:**
+• Urgent/threatening language
+• Too-good-to-be-true offers
+• Requests for sensitive information
+• Suspicious links (verify domain)
+• Poor grammar in "official" messages
+• Pressure to act immediately
+
+**✅ How to Protect Yourself:**
+1. Verify sender through official channels
+2. Never click unknown links
+3. Use two-factor authentication
+4. Keep software updated
+5. Report suspicious activity to Cyber Cell (1930)
+
+**Need me to analyze a specific message?**
+Just send it to me and I'll check if it's a scam!
+"""
+    
+    return {
+        "answer": response,
+        "type": "scam_education"
     }
