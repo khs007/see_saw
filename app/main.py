@@ -129,7 +129,7 @@ app.add_middleware(
 app.include_router(query_router)
 
 # Health check endpoint
-@app.get("/health")
+@app.head("/health")
 def health_check():
     """
     Health check endpoint for Render
@@ -147,7 +147,7 @@ def health_check():
     }
 
 # Root endpoint
-@app.get("/")
+@app.head("/")
 def root():
     """
     Root endpoint - API documentation
