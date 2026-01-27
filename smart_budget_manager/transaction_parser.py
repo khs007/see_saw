@@ -66,7 +66,6 @@ def parse_transaction(user_message: str) -> Optional[TransactionExtract]:
     try:
         transaction = chain.invoke({"user_message": user_message})
         
-        # ✅ CRITICAL FIX: Set current date if LLM didn't provide one
         if not transaction.date:
             transaction.date = datetime.now().strftime("%Y-%m-%d")
             print(f"[TransactionParser] ⚠️ No date in query, using today: {transaction.date}")

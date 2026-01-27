@@ -1,4 +1,3 @@
-# scam_detector/scam_detector.py - BACKWARD COMPATIBLE VERSION
 """
 Enhanced Scam Detection Module for FinGuard
 Detects fraudulent messages, phishing attempts, and scam patterns

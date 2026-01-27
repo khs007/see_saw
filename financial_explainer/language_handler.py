@@ -1,4 +1,3 @@
-# financial_explainer/language_handler.py
 """
 Language Detection and Multilingual Response Handler
 Detects user's language preference and generates responses accordingly

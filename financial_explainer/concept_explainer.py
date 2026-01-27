@@ -1,4 +1,3 @@
-# financial_explainer/concept_explainer.py
 """
 Personalized Financial Concept Explainer
 Explains financial concepts based on user's spending patterns and risk profile

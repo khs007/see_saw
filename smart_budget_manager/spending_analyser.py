@@ -1,5 +1,3 @@
-# smart_budget_manager/spending_analyser.py
-
 from datetime import datetime, timedelta
 from langchain_neo4j import Neo4jGraph
 

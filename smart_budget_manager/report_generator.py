@@ -1,5 +1,3 @@
-# smart_budget_manager/report_generator.py
-
 from smart_budget_manager.spending_analyser import SpendingAnalyzer
 
 
@@ -15,11 +13,10 @@ def generate_monthly_report(user_id: str) -> str:
     Returns:
         Formatted report string
     """
-    # ✅ CRITICAL FIX: Get finance database connection
+ 
     from db_.neo4j_finance import get_finance_db
     finance_db = get_finance_db()
     
-    # ✅ Pass finance connection to analyzer
     analyzer = SpendingAnalyzer(finance_db.kg)
     
     spending = analyzer.get_monthly_spending(user_id)

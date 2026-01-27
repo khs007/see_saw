@@ -15,9 +15,6 @@ async def lifespan(app: FastAPI):
     print("🚀 FINGUARD STARTUP")
     print("="*60)
     
-    # ============================================================
-    # PHASE 1: Validate Environment Variables
-    # ============================================================
     print("\n[Phase 1] Validating environment variables...")
     
     required_vars = [
@@ -40,9 +37,7 @@ async def lifespan(app: FastAPI):
     
     print("✅ All required environment variables present")
     
-    # ============================================================
-    # PHASE 2: Initialize Finance Database (CRITICAL)
-    # ============================================================
+
     print("\n[Phase 2] Initializing Finance Database...")
     
     try:
@@ -58,11 +53,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"❌ Finance DB initialization failed: {e}")
         print("⚠️  Finance features will be unavailable")
-        # Don't exit - allow app to start in degraded mode
-    
-    # ============================================================
-    # PHASE 3: Initialize Scam Detector (OPTIONAL)
-    # ============================================================
+   
     print("\n[Phase 3] Initializing Scam Detector...")
     
     try:
@@ -72,10 +63,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️  Scam Detector initialization failed: {e}")
         print("   (This is optional - continuing anyway)")
-    
-    # ============================================================
-    # PHASE 4: Initialize Knowledge Graph (LAZY - NON-BLOCKING)
-    # ============================================================
+
     print("\n[Phase 4] Preparing Knowledge Graph...")
     print("ℹ️  KG will initialize on first query (lazy loading)")
     
@@ -89,19 +77,13 @@ async def lifespan(app: FastAPI):
         print(f"✅ PDF URL configured: {pdf_url[:50]}...")
     else:
         print("⚠️  PDF_URL not set - KG features may be limited")
-    
-    # ============================================================
-    # STARTUP COMPLETE
-    # ============================================================
+
     print("\n" + "="*60)
     print("✅ FINGUARD READY TO SERVE")
     print("="*60 + "\n")
     
     yield
-    
-    # ============================================================
-    # SHUTDOWN
-    # ============================================================
+
     print("\n🛑 Shutting down FinGuard...")
     print("✅ Cleanup complete\n")
 

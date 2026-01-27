@@ -1,5 +1,3 @@
-# finance/alert_generator.py
-
 from typing import Optional
 
 class AlertGenerator:

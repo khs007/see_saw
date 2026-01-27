@@ -11,10 +11,6 @@ import os
 
 load_dotenv()
 
-# ============================================================
-# LAZY INITIALIZATION PATTERN
-# ============================================================
-
 _kg_conn = None
 _kg_initialized = False
 
@@ -61,9 +57,6 @@ def initialize_kg_if_needed():
         # Don't crash - allow queries to try anyway
 
 
-# ============================================================
-# MODELS
-# ============================================================
 
 class KnowledgeConcept(BaseModel):
     """Schema for extracting entities"""
@@ -82,10 +75,6 @@ class UserProfile(BaseModel):
     category: Optional[str] = None
     occupation: Optional[str] = None
 
-
-# ============================================================
-# LLM SETUP
-# ============================================================
 
 llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0)
 
@@ -109,11 +98,6 @@ entity_prompt = ChatPromptTemplate.from_messages([
     ("system", "You are extracting objects and entities from the text."),
     ("human", "Use the given format to extract information from the following input:{question}"),
 ])
-
-
-# ============================================================
-# FUNCTIONS
-# ============================================================
 
 def detect_target_scope(text: str) -> str:
     """Detect if query is about self, other, or generic"""
