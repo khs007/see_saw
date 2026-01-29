@@ -1,15 +1,8 @@
-"""
-Enhanced Scam Detection Module for FinGuard
-Detects fraudulent messages, phishing attempts, and scam patterns
-BACKWARD COMPATIBLE with existing imports
-"""
-
 import os
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-
 
 class ScamAnalysis(BaseModel):
     """Schema for scam detection results"""
@@ -19,7 +12,6 @@ class ScamAnalysis(BaseModel):
     scam_type: Optional[str] = Field(None, description="Type of scam detected")
     red_flags: list[str] = Field(default_factory=list, description="List of suspicious indicators")
     recommendation: str = Field(..., description="User recommendation")
-
 
 class ScamDetector:
     """
@@ -32,7 +24,7 @@ class ScamDetector:
     def __init__(self):
         self.llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0)
         self.ml_model = self._load_ml_model()
-        
+
         # Common scam indicators
         self.red_flag_keywords = {
             'urgent': ['urgent', 'immediately', 'expire', 'limited time', 'act now', 'hurry'],
@@ -97,7 +89,7 @@ class ScamDetector:
                     flags.append(f"{category}: '{keyword}'")
         
         return flags
-    
+        
     def _llm_analyze(self, message: str, red_flags: list[str]) -> Dict[str, Any]:
         """Use LLM to analyze message for scam patterns"""
         
@@ -249,11 +241,6 @@ Analyze this message and determine if it's a scam.
         
         return ScamAnalysis(**llm_result)
 
-
-# ============================================================
-# BACKWARD COMPATIBILITY FUNCTIONS
-# ============================================================
-
 def load_scam_bundle():
     """
     DEPRECATED: For backward compatibility only.
@@ -264,8 +251,7 @@ def load_scam_bundle():
     print("[load_scam_bundle] ⚠️ DEPRECATED: This function is no longer needed.")
     print("[load_scam_bundle]    The scam detector auto-initializes on first use.")
     print("[load_scam_bundle]    You can safely remove this import from app/main.py")
-    
-    # Return None - won't break existing code
+
     return None
 
 
@@ -281,24 +267,20 @@ def predict_scam(payload: dict) -> float:
     
     scam_text = payload.get("scam_text", "")
     response_text = payload.get("response_text", "")
-    
-    # Build context from payload
+
     context = {
         "response_text": response_text
     }
     
-    # Add any numerical features
+ 
     for key, value in payload.items():
         if key not in ["scam_text", "response_text"] and isinstance(value, (int, float)):
             context[key] = value
     
     result = detector.detect_scam(scam_text, context)
     
-    # Return just the confidence score for backward compatibility
     return result.confidence
 
-
-# Singleton instance
 _detector = None
 
 def get_scam_detector() -> ScamDetector:

@@ -8,7 +8,6 @@ from langchain_neo4j.vectorstores.neo4j_vector import remove_lucene_chars
 from agent.class_agent import AgentState
 from langchain_core.messages import HumanMessage, AIMessage
 import os
-
 load_dotenv()
 
 _kg_conn = None
@@ -28,7 +27,6 @@ def get_kg_conn() -> Neo4jGraph:
     
     return _kg_conn
 
-
 def initialize_kg_if_needed():
     """
     Initialize KG ONLY on first use (not at import time)
@@ -38,12 +36,11 @@ def initialize_kg_if_needed():
     global _kg_initialized
     
     if _kg_initialized:
-        return  # Already done
+        return  
     
     try:
         kg = get_kg_conn()
         
-        # Create index if not exists
         kg.query("""
         CREATE FULLTEXT INDEX entity_name_index IF NOT EXISTS 
         FOR (n:Entity) ON EACH [n.name]
@@ -54,8 +51,6 @@ def initialize_kg_if_needed():
         
     except Exception as e:
         print(f"[KG] ⚠️ Initialization failed: {e}")
-        # Don't crash - allow queries to try anyway
-
 
 
 class KnowledgeConcept(BaseModel):
@@ -67,14 +62,12 @@ class KnowledgeConcept(BaseModel):
         description="Extract at most 5 core concepts"
     )
 
-
 class UserProfile(BaseModel):
     age: Optional[int] = None
     income: Optional[int] = None
     state: Optional[str] = None
     category: Optional[str] = None
     occupation: Optional[str] = None
-
 
 llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0)
 
@@ -138,7 +131,6 @@ def extract_user_profile(state: AgentState) -> AgentState:
         print(f"[ProfileExtractor] Failed: {e}")
         extracted_profile = {}
     
-    # Set target based on scope
     if target_scope == "self":
         state["user_profile"] = extracted_profile
         state["target_profile"] = extracted_profile
@@ -152,7 +144,6 @@ def extract_user_profile(state: AgentState) -> AgentState:
     
     return state
 
-
 def generate_full_query(input: str) -> str:
     """Generate Lucene query from input"""
     full_query = ""
@@ -163,7 +154,6 @@ def generate_full_query(input: str) -> str:
     full_query += f"{words[-1]}~2"
     
     return full_query.strip()
-
 
 def structured_retriever(state: AgentState) -> AgentState:
     """
@@ -187,7 +177,6 @@ def structured_retriever(state: AgentState) -> AgentState:
         state["structured_context"] = ""
         return state
     
-    # ✅ LAZY INITIALIZATION - happens here, not at import
     initialize_kg_if_needed()
     
     kg = get_kg_conn()
@@ -217,6 +206,6 @@ def structured_retriever(state: AgentState) -> AgentState:
     except Exception as e:
         print(f"[KG Error]: {e}")
         result = ""
-    
+
     state["structured_context"] = result.strip()
     return state
