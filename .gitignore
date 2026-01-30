@@ -27,3 +27,6 @@ __pycache__/
 
 # IDE
 .vscode/
+# Gmail OAuth
+credentials.json
+token.json

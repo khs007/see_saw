@@ -4,6 +4,7 @@ from typing import Dict, Any, Literal
 from pydantic import BaseModel, Field
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
+from email_scam_handler import handle_email_scam_check, format_email_scam_response
 
 def _is_greeting(query: str) -> bool:
     """
@@ -168,7 +169,6 @@ def _get_hindi_greeting(has_transactions: bool) -> str:
 
 
 class QueryClassification(BaseModel):
-    """Classification of user query intent"""
     category: Literal[
         "government_schemes",
         "transaction_logging", 
@@ -176,9 +176,10 @@ class QueryClassification(BaseModel):
         "budget_setup",
         "scam_detection",
         "scam_analysis",
-        "concept_explanation", 
+        "concept_explanation",
+        "email_scam_check",  # ← ADD THIS
         "general_conversation"
-    ] = Field(
+    ]  = Field(
         ..., 
         description="Primary category of the user's query"
     )
@@ -261,6 +262,19 @@ Examples:
 ✅ concept_explanation: "Is term insurance good for me?"
 ❌ government_schemes: "Am I eligible for MUDRA loan?" (scheme eligibility)
 ❌ transaction_logging: "I invested 5000 in FD" (recording transaction)
+    
+**email_scam_check**: User wants to check emails for scams.
+CRITICAL INDICATORS:
+- "check my emails"
+- "scan my inbox"
+- "analyze my emails"
+- "are my emails safe"
+- "email scam check"
+- "check for phishing emails"
+Examples:
+✅ email_scam_check: "Check my emails for scams"
+✅ email_scam_check: "Scan my inbox"
+✅ email_scam_check: "Are my recent emails safe?"
 
 CRITICAL RULES:
 1. "spent for this month" = spending_query (asking about history)
@@ -342,6 +356,10 @@ def router_feature(req: Dict[str, Any]) -> Dict[str, Any]:
     elif classification.category == "concept_explanation":
         print(f"[FeatureRouter] → CONCEPT EXPLANATION")
         return handle_concept_explanation_request(query, user_id)
+    
+    elif classification.category == "email_scam_check":
+        print(f"[FeatureRouter] → EMAIL SCAM CHECK")
+        return handle_email_scam_request(query, user_id)
     
     else:  # general_conversation or low confidence
         # Check if it's actually a greeting
@@ -604,4 +622,31 @@ Just send it to me and I'll check if it's a scam!
     return {
         "answer": response,
         "type": "scam_education"
+    }
+
+def handle_email_scam_request(query: str, user_id: str) -> Dict[str, Any]:
+    """Handle email scam check requests"""
+    
+    # Extract time parameters
+    hours_ago = 24  # default
+    max_emails = 10
+    
+    query_lower = query.lower()
+    if "today" in query_lower:
+        hours_ago = 12
+    elif "yesterday" in query_lower:
+        hours_ago = 48
+    elif "week" in query_lower or "last 7 days" in query_lower:
+        hours_ago = 168
+    
+    print(f"[EmailScamHandler] Checking last {hours_ago} hours, max {max_emails} emails")
+    
+    # Process request
+    result = handle_email_scam_check(user_id, hours_ago, max_emails)
+    formatted_response = format_email_scam_response(result)
+    
+    return {
+        "answer": formatted_response,
+        "type": "email_scam_check",
+        "analysis_data": result
     }

@@ -4,6 +4,7 @@ from app.query import query_router
 from contextlib import asynccontextmanager
 import os
 import sys
+from app.email_api import email_router
 
 # Startup/shutdown lifecycle
 @asynccontextmanager
@@ -109,6 +110,8 @@ app.add_middleware(
 
 # Include routers
 app.include_router(query_router)
+# After existing routers
+app.include_router(email_router)
 
 # Health check endpoint
 @app.head("/health")
