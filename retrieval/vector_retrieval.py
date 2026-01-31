@@ -4,7 +4,6 @@ from langchain_chroma import Chroma
 from agent.class_agent import AgentState
 from langchain_core.messages import HumanMessage,AIMessage
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-import google.generativeai as genai
 import os
 
 load_dotenv()
@@ -12,12 +11,11 @@ load_dotenv()
 def get_llm():
      return ChatGroq(model="llama-3.1-8b-instant",temperature=0)
 
-# ✅ FIX: Configure Google API first, then create embeddings
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-
+# ✅ FIX: Configure embeddings without google.generativeai
 embeddings = GoogleGenerativeAIEmbeddings(
     model="models/gemini-embedding-001",
-    task_type="retrieval_document" 
+    task_type="retrieval_document",
+    google_api_key=os.getenv("GOOGLE_API_KEY")
 )
 
 try:
