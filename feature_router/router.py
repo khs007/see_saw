@@ -5,6 +5,10 @@ from pydantic import BaseModel, Field
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from email_scam_handler import handle_email_scam_check, format_email_scam_response
+from email_payment_handler_integrated import (
+    handle_email_payment_extraction, 
+    format_email_payment_response
+)
 
 def _is_greeting(query: str) -> bool:
     """
@@ -178,6 +182,7 @@ class QueryClassification(BaseModel):
         "scam_analysis",
         "concept_explanation",
         "email_scam_check",  # ← ADD THIS
+        "email_payment_extraction",
         "general_conversation"
     ]  = Field(
         ..., 
@@ -276,7 +281,19 @@ Examples:
 ✅ email_scam_check: "Scan my inbox"
 ✅ email_scam_check: "Are my recent emails safe?"
 
-
+**email_payment_extraction**: User wants to extract payment transactions from emails.
+CRITICAL INDICATORS:
+- "extract payments from emails"
+- "scan my emails for transactions"
+- "check my email for payments"
+- "import transactions from gmail"
+- "auto-log email payments"
+- "find payments in my inbox"
+Examples:
+✅ email_payment_extraction: "Extract payments from my emails"
+✅ email_payment_extraction: "Scan my inbox for transactions"
+✅ email_payment_extraction: "Import UPI transactions from Gmail"
+✅ email_payment_extraction: "Check my emails and add payments to database"
 
 CRITICAL RULES:
 1. "spent for this month" = spending_query (asking about history)
@@ -362,6 +379,10 @@ def router_feature(req: Dict[str, Any]) -> Dict[str, Any]:
     elif classification.category == "email_scam_check":
         print(f"[FeatureRouter] → EMAIL SCAM CHECK")
         return handle_email_scam_request(query, user_id)
+    
+    elif classification.category == "email_payment_extraction":
+        print(f"[FeatureRouter] → EMAIL PAYMENT EXTRACTION")
+        return handle_email_payment_request(query, user_id)
     
     else:  # general_conversation or low confidence
         # Check if it's actually a greeting
@@ -652,3 +673,35 @@ def handle_email_scam_request(query: str, user_id: str) -> Dict[str, Any]:
         "type": "email_scam_check",
         "analysis_data": result
     }
+
+def handle_email_payment_request(query: str, user_id: str) -> Dict[str, Any]:
+    """Handle email payment extraction requests"""
+    
+    # Extract time parameters from query
+    hours_ago = 24  # default
+    max_emails = 10
+    
+    query_lower = query.lower()
+    if "today" in query_lower:
+        hours_ago = 12
+    elif "yesterday" in query_lower:
+        hours_ago = 48
+    elif "week" in query_lower or "last 7 days" in query_lower:
+        hours_ago = 168
+    elif "month" in query_lower:
+        hours_ago = 720  # 30 days
+    
+    print(f"[EmailPaymentHandler] Extracting from last {hours_ago} hours, max {max_emails} emails")
+    
+    # Process request
+    result = handle_email_payment_extraction(user_id, hours_ago, max_emails)
+    formatted_response = format_email_payment_response(result)
+    
+    return {
+        "answer": formatted_response,
+        "type": "email_payment_extraction",
+        "extraction_data": result
+    }
+
+
+
