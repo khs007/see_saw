@@ -6,8 +6,6 @@ import os
 import sys
 from app.upi_api import upi_router
 
-# Add with other router includes
-
 # Startup/shutdown lifecycle
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -64,14 +62,10 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️  Scam Detector initialization failed: {e}")
 
-    print("\n[Phase 4] Preparing Knowledge Graph...")
-    print("ℹ️  KG will initialize on first query (lazy loading)")
-    
-    pdf_url = os.getenv("PDF_URL")
-    if pdf_url:
-        print(f"✅ PDF URL configured: {pdf_url[:50]}...")
-    else:
-        print("⚠️  PDF_URL not set - KG features may be limited")
+    # ✅ FIX: Don't initialize KG at startup - do it lazily
+    print("\n[Phase 4] Knowledge Graph...")
+    print("✅ Will initialize on first query (lazy loading)")
+    print("ℹ️  This avoids blocking startup")
 
     print("\n" + "="*60)
     print("✅ FINGUARD READY TO SERVE")
@@ -105,6 +99,7 @@ app.add_middleware(
 # Include routers
 app.include_router(query_router)
 app.include_router(upi_router)  
+
 # Include email router
 try:
     from app.email_api import email_router
