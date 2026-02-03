@@ -3,8 +3,8 @@ from agent.graph import app
 from langchain_core.messages import HumanMessage, AIMessage
 from typing import Dict, Any
 
-# Session management (in production, use Redis/database)
-sessions = {}  # {user_id: {"session": [], "memory": ""}}
+
+sessions = {}  
 
 
 def get_session(user_id: str):

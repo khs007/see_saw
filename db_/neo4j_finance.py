@@ -14,7 +14,7 @@ class FinanceDB:
                     ⚠️ Should ALWAYS be None to use finance credentials!
         """
         if kg_conn is None:
-            # ✅ Create new connection using FINANCE database credentials
+          
             self.kg = Neo4jGraph(
                 url=os.getenv("NEO4J_URI2"),
                 username=os.getenv("NEO4J_USERNAME2"),
@@ -23,11 +23,10 @@ class FinanceDB:
             print("[FinanceDB] ✅ Created NEW connection to finance database")
             print(f"[FinanceDB]    Connected to: {os.getenv('NEO4J_URI2')}")
         else:
-            # ⚠️ This should NEVER happen in production!
+          
             self.kg = kg_conn
             print("[FinanceDB] 🚨 WARNING: Using provided connection - may be wrong database!")
         
-        # Only create indexes once at startup, not on every request
         if not hasattr(FinanceDB, '_indexes_created'):
             self._create_indexes()
             FinanceDB._indexes_created = True
@@ -81,20 +80,16 @@ class FinanceDB:
         )
         RETURN t.id as transaction_id
         """
-        
-        # ✅ CRITICAL FIX: Ensure date is ALWAYS current if not provided
+      
         transaction_date = transaction.get("date")
         
         if not transaction_date or transaction_date == "":
-            # No date provided → use current datetime
             transaction_date = datetime.now().isoformat()
             print(f"[FinanceDB] ⚠️ No date in transaction, using now: {transaction_date}")
         elif isinstance(transaction_date, str):
-            # String date provided (e.g., "2025-01-26")
-            # Convert to ISO datetime format
             try:
                 # Parse the date string and convert to datetime
-                if "T" not in transaction_date:  # Just a date, no time
+                if "T" not in transaction_date: 
                     dt = datetime.strptime(transaction_date, "%Y-%m-%d")
                     transaction_date = dt.isoformat()
                     print(f"[FinanceDB] ✅ Converted date to ISO: {transaction_date}")
@@ -162,11 +157,6 @@ class FinanceDB:
             print(f"[FinanceDB] ❌ Connection failed: {e}")
             return False
 
-
-# ============================================================
-# SINGLETON PATTERN - SAFE VERSION
-# ============================================================
-
 _finance_db_instance = None
 
 def get_finance_db(kg_conn=None):
@@ -184,15 +174,12 @@ def get_finance_db(kg_conn=None):
     """
     global _finance_db_instance
     
-    # ✅ SAFETY CHECK: Warn if someone tries to pass a connection
     if kg_conn is not None:
         print("[get_finance_db] 🚨 WARNING: kg_conn parameter ignored!")
         print("[get_finance_db]    This may indicate a bug. Check your code.")
         print("[get_finance_db]    Finance DB should ALWAYS use its own connection.")
-    
-    # Create singleton instance if it doesn't exist
+
     if _finance_db_instance is None:
-        # ✅ ALWAYS pass None to force finance credentials
         _finance_db_instance = FinanceDB(None)
         print("[get_finance_db] ✅ Singleton created")
     
@@ -208,5 +195,5 @@ def reset_finance_db():
     """
     global _finance_db_instance
     _finance_db_instance = None
-    FinanceDB._indexes_created = False  # Reset index flag too
+    FinanceDB._indexes_created = False  
     print("[reset_finance_db] 🔄 Singleton reset")

@@ -15,12 +15,12 @@ class EmailScamResult(BaseModel):
     sender: str
     received_date: str
     is_scam: bool
-    risk_level: str  # LOW, MEDIUM, HIGH, CRITICAL
+    risk_level: str  
     confidence: float
     scam_type: Optional[str] = None
     red_flags: List[str] = Field(default_factory=list)
     recommendation: str
-    safe_sender: bool = False  # Known safe sender
+    safe_sender: bool = False  
     
     # Email-specific indicators
     sender_domain: str = ""
@@ -47,14 +47,14 @@ class EmailScamAnalyzer:
         from scam_detector.scam_detector import get_scam_detector
         self.scam_detector = get_scam_detector()
         
-        # Known safe domains (can be expanded)
+
         self.safe_domains = {
             'gmail.com', 'google.com', 'apple.com', 'microsoft.com',
             'amazon.com', 'paypal.com', 'facebook.com', 'twitter.com',
             'linkedin.com', 'github.com', 'stackoverflow.com'
         }
         
-        # Known financial institutions (India-specific)
+
         self.financial_domains = {
             'sbi.co.in', 'hdfcbank.com', 'icicibank.com', 'axisbank.com',
             'kotak.com', 'pnbindia.in', 'bankofbaroda.in', 'canarabank.com'
@@ -190,7 +190,7 @@ class EmailScamAnalyzer:
         suspicious = []
         
         suspicious_patterns = [
-            'bit.ly', 'tinyurl', 'goo.gl', 't.co',  # URL shorteners
+            'bit.ly', 'tinyurl', 'goo.gl', 't.co', 
             'verify', 'update', 'secure', 'account-',
             'login-', 'signin-', 'confirm-'
         ]
@@ -200,14 +200,13 @@ class EmailScamAnalyzer:
             if any(pattern in link_lower for pattern in suspicious_patterns):
                 suspicious.append(link)
         
-        return suspicious[:5]  # Limit to 5
+        return suspicious[:5] 
     
     def _check_sender_spoofing(self, sender: str, body: str) -> bool:
         """Check if sender might be spoofed"""
         sender_lower = sender.lower()
         body_lower = body.lower()
         
-        # Check if claiming to be from bank but not from bank domain
         bank_keywords = ['bank', 'sbi', 'hdfc', 'icici', 'axis', 'kotak']
         
         for keyword in bank_keywords:
@@ -230,12 +229,11 @@ class EmailScamAnalyzer:
     
     def _generate_summary(self, results: List[EmailScamResult], hours_ago: int) -> Dict[str, Any]:
         """Generate analysis summary"""
-        # Count by risk level
+
         risk_counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
         for result in results:
             risk_counts[result.risk_level] = risk_counts.get(result.risk_level, 0) + 1
-        
-        # Top scam types
+
         scam_types = {}
         for result in results:
             if result.scam_type:
@@ -251,7 +249,6 @@ class EmailScamAnalyzer:
         }
 
 
-# Singleton
 _email_analyzer = None
 
 

@@ -11,7 +11,6 @@ load_dotenv()
 def get_llm():
      return ChatGroq(model="llama-3.1-8b-instant",temperature=0)
 
-# ✅ FIX: Configure embeddings without google.generativeai
 embeddings = GoogleGenerativeAIEmbeddings(
     model="models/gemini-embedding-001",
     task_type="retrieval_document",

@@ -21,12 +21,10 @@ def handle_email_scam_check(user_id: str, hours_ago: int = 24, max_emails: int =
     try:
         from email_service import get_email_service
         from email_scam_analyser import get_email_analyzer
-        
-        # Get services
+
         email_service = get_email_service()
         analyzer = get_email_analyzer()
-        
-        # Authenticate (first time will require OAuth)
+     
         if not email_service.authenticate():
             return {
                 "success": False,
@@ -55,7 +53,6 @@ def handle_email_scam_check(user_id: str, hours_ago: int = 24, max_emails: int =
         print(f"[EmailScamHandler] Analyzing {len(emails)} emails")
         analysis = analyzer.analyze_bulk(emails, hours_ago)
         
-        # Format response
         return {
             "success": True,
             "total_analyzed": analysis.total_analyzed,
@@ -121,7 +118,7 @@ def format_email_scam_response(analysis_result: Dict[str, Any]) -> str:
     response += f"• 🚨 Scams Detected: {scams}\n"
     response += f"• ✅ Safe Emails: {safe}\n\n"
     
-    # Risk breakdown
+
     if summary.get("risk_breakdown"):
         response += "**Risk Breakdown:**\n"
         risk_breakdown = summary["risk_breakdown"]
@@ -135,19 +132,18 @@ def format_email_scam_response(analysis_result: Dict[str, Any]) -> str:
             response += f"✅ Low: {risk_breakdown['LOW']}\n"
         response += "\n"
     
-    # Top scams (show only MEDIUM+ risk)
+
     if scams > 0:
         response += "**⚠️ Suspicious Emails Detected:**\n\n"
         
         count = 0
         for result in results:
-            # Only show MEDIUM or higher risk
+   
             if result["risk_level"] in ["CRITICAL", "HIGH", "MEDIUM"]:
                 count += 1
-                if count > 5:  # Limit to top 5
+                if count > 5:  
                     break
-                
-                # Risk emoji
+ 
                 if result["risk_level"] == "CRITICAL":
                     emoji = "🚨"
                 elif result["risk_level"] == "HIGH":
@@ -162,13 +158,12 @@ def format_email_scam_response(analysis_result: Dict[str, Any]) -> str:
                 if result.get("scam_type"):
                     response += f"   Type: {result['scam_type']}\n"
                 
-                # Top red flags
+  
                 if result.get("red_flags") and len(result["red_flags"]) > 0:
                     response += f"   Red Flags: {result['red_flags'][0]}\n"
                 
                 response += "\n"
     
-    # Recommendations
     response += "**🛡️ Recommendations:**\n"
     if scams > 0:
         response += "• Delete suspicious emails immediately\n"
@@ -201,21 +196,16 @@ def handle_single_email_analysis(email_text: str, sender: str = None, subject: s
         from datetime import datetime
         
 
-
-
-        # Build analysis text
         analysis_text = ""
         if subject:
             analysis_text += f"Subject: {subject}\n"
         if sender:
             analysis_text += f"From: {sender}\n"
         analysis_text += f"Body: {email_text}"
-        
-        # Use scam detector
+
         detector = get_scam_detector()
         scam_analysis = detector.detect_scam(analysis_text)
-        
-        # Build result
+
         result = EmailScamResult(
             email_id="manual_analysis",
             subject=subject or "(No subject)",

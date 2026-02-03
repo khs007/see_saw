@@ -136,7 +136,7 @@ def format_explanation_response(explanation, spending_data: Dict[str, Any]) -> s
     
     # Risk note if applicable
     if explanation.risk_note:
-        response += f"\n⚠️ {explanation.risk_note}\n"
+        response += f"\n {explanation.risk_note}\n"
     
     # Add spending summary
     total = spending_data.get('total_spent', 0)

@@ -322,10 +322,6 @@ IMPORTANT: Translate the ENTIRE text, not just parts. Make it sound natural and 
     
     def _format_hindi(self, exp: Dict, data: Dict) -> str:
         """Format response in Hindi (Devanagari)"""
-        
-        # For now, use English - you can add proper Hindi translation later
-        # This requires a Hindi-capable LLM or translation service
-        
         print("[LanguageHandler] ⚠️ Hindi (Devanagari) translation not yet implemented")
         print("[LanguageHandler]    Falling back to Hinglish")
         

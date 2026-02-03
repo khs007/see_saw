@@ -56,16 +56,13 @@ class ScamDetector:
                 print("[ScamDetector] 📦 Loaded path:", model_path)
                 print("[ScamDetector] 📦 Loaded type:", type(loaded))
 
-                
-                # ✅ FIX: Check if it's a dict or just the model
                 if isinstance(loaded, dict):
                     print("[ScamDetector] 📦 Bundle keys:", loaded.keys())
                     return loaded
                 else:
-                    # It's just the model object, not a bundle
                     print("[ScamDetector] ⚠️ ML model loaded but in old format (model only, no vectorizers)")
                     print("[ScamDetector] ℹ️  Running in LLM-only mode")
-                    return None  # Can't use it without vectorizers
+                    return None  
             else:
                 print("[ScamDetector] ⚠️ ML model not found, using LLM-only mode")
                 return None
@@ -174,7 +171,6 @@ Analyze this message and determine if it's a scam.
             
             bundle = self.ml_model
             
-            # ✅ FIX: Properly extract components from bundle
             model = bundle.get("model")
             tfidf_scam = bundle.get("tfidf_scam")
             tfidf_response = bundle.get("tfidf_response")
@@ -184,21 +180,20 @@ Analyze this message and determine if it's a scam.
                 print("[ScamDetector] ⚠️ ML model or vectorizer missing")
                 return None
             
-            # Transform text
+
             X_scam = tfidf_scam.transform([message])
             
-            # Handle response text if available
+ 
             response_text = context.get("response_text", "")
             if tfidf_response is not None:
                 X_resp = tfidf_response.transform([response_text])
             else:
                 X_resp = None
             
-            # Numerical features
+
             numeric_values = []
             for feature in safe_features:
                 value = context.get(feature, 0)
-                # Ensure it's a number
                 if isinstance(value, (int, float)):
                     numeric_values.append(value)
                 else:
@@ -288,8 +283,6 @@ Analyze this message and determine if it's a scam.
                 llm_result["risk_level"] = "MEDIUM"
             else:
                 llm_result["risk_level"] = "LOW"
-        
-        # Ensure red flags are included
         llm_result["red_flags"] = red_flags
         
         return ScamAnalysis(**llm_result)

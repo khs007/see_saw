@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 import re
 
-# Gmail API imports (install: google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client)
 try:
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
@@ -23,7 +22,6 @@ except ImportError:
     print("[EmailService] ⚠️ Gmail API libraries not installed")
 
 
-# If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
 
@@ -55,11 +53,11 @@ class EmailMessage:
             "id": self.id,
             "subject": self.subject,
             "sender": self.sender,
-            "body": self.body[:500],  # Truncate for API
+            "body": self.body[:500],  
             "received_date": self.received_date.isoformat(),
             "snippet": self.snippet,
             "has_links": self.has_links,
-            "links": self.links[:5]  # Limit to 5 links
+            "links": self.links[:5]  
         }
 
 
@@ -91,14 +89,13 @@ class EmailService:
         """
         creds = None
         
-        # Load token if exists
+
         if os.path.exists(self.token_path):
             try:
                 creds = Credentials.from_authorized_user_file(self.token_path, SCOPES)
             except Exception as e:
                 print(f"[EmailService] ⚠️ Failed to load token: {e}")
         
-        # Refresh or get new credentials
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 try:
@@ -121,7 +118,6 @@ class EmailService:
                     print(f"[EmailService] ❌ OAuth flow failed: {e}")
                     return False
             
-            # Save credentials
             try:
                 with open(self.token_path, 'w') as token:
                     token.write(creds.to_json())
@@ -293,8 +289,6 @@ class EmailService:
         url_pattern = r'https?://[^\s<>"{}|\\^`\[\]]+'
         return re.findall(url_pattern, text)
 
-
-# Singleton
 _email_service = None
 
 

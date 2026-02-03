@@ -20,7 +20,7 @@ class SpendingAnalyzer:
         Returns:
             List of dicts with spending by category
         """
-        # ✅ FIXED: Proper date filtering with NULL handling
+
         query = """
         MATCH (u:User {id: $user_id})-[:MADE_TRANSACTION]->(t:Transaction)
         WHERE t.type = 'expense'
@@ -40,7 +40,6 @@ class SpendingAnalyzer:
         start_of_month = datetime(now.year, now.month, 1)
         
         try:
-            # Debug: Check total transactions first
             debug_query = """
             MATCH (u:User {id: $user_id})-[:MADE_TRANSACTION]->(t:Transaction)
             RETURN count(t) as total_count, 
@@ -55,7 +54,7 @@ class SpendingAnalyzer:
                 print(f"[SpendingAnalyzer] 🔍 Date range: {dr.get('earliest')} to {dr.get('latest')}")
                 print(f"[SpendingAnalyzer] 🔍 Filtering: {start_of_month.isoformat()} to {now.isoformat()}")
             
-            # Run actual query
+       
             result = self.kg.query(query, {
                 "user_id": user_id,
                 "category": category,
@@ -82,7 +81,7 @@ class SpendingAnalyzer:
         Returns:
             List of dicts with budget status by category
         """
-        # ✅ SIMPLIFIED: Remove complex date filtering for now
+
         query = """
         MATCH (u:User {id: $user_id})-[:HAS_BUDGET]->(b:Budget)
         OPTIONAL MATCH (u)-[:MADE_TRANSACTION]->(t:Transaction)
@@ -126,7 +125,6 @@ class SpendingAnalyzer:
         if date is None:
             date = datetime.now()
         
-        # Start and end of the day
         start_of_day = datetime(date.year, date.month, date.day, 0, 0, 0)
         end_of_day = datetime(date.year, date.month, date.day, 23, 59, 59)
         

@@ -4,7 +4,6 @@ from app.query import query_router
 from contextlib import asynccontextmanager
 import os
 import sys
-from app.upi_api import upi_router
 
 # Startup/shutdown lifecycle
 @asynccontextmanager
@@ -62,7 +61,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️  Scam Detector initialization failed: {e}")
 
-    # ✅ FIX: Don't initialize KG at startup - do it lazily
+
     print("\n[Phase 4] Knowledge Graph...")
     print("✅ Will initialize on first query (lazy loading)")
     print("ℹ️  This avoids blocking startup")
@@ -97,8 +96,7 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(query_router)
-app.include_router(upi_router)  
+app.include_router(query_router) 
 
 # Include email router
 try:
